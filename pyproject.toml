@@ -24,7 +24,7 @@ packages = ["uak"]
 "AGENTS.md" = "uak/kit/AGENTS.md"
 
 [dependency-groups]
-dev = ["prek>=0.2", "ruff>=0.9"]
+dev = ["prek>=0.2", "pytest>=8", "ruff>=0.9"]
 
 [tool.ruff]
 line-length = 120

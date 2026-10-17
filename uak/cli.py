@@ -107,6 +107,12 @@ def sync(
     only: Annotated[list[Kind] | None, typer.Option("--only", help="Repeatable. Default: everything.")] = None,
     project_dir: Annotated[Path, typer.Option(help="Project root for --scope project.")] = Path("."),
     dry_run: Annotated[bool, typer.Option("--dry-run", "-n", help="Show changes without writing.")] = False,
+    overwrite: Annotated[
+        bool,
+        typer.Option(
+            "--overwrite", help="Replace existing skills, commands, MCP servers and instructions without asking."
+        ),
+    ] = False,
 ) -> None:
     """Install the kit into the selected coding CLIs (idempotent)."""
     _banner()
@@ -114,7 +120,8 @@ def sync(
     targets = build_targets(project_dir.resolve())
     names = [t.value for t in target] if target else list(targets)
     kinds = {k.value for k in only} if only else {k.value for k in Kind}
-    w = Writer(dry_run)
+    ask = (lambda msg: typer.confirm(msg, default=False, err=True)) if sys.stdin.isatty() else None
+    w = Writer(dry_run, overwrite, ask)
     failed = 0
     for n in names:
         t = targets[n]

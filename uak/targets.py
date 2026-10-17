@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import filecmp
 import json
 import os
 import re
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,25 +23,68 @@ class SyncError(Exception):
     pass
 
 
+def _same_dir(a: Path, b: Path) -> bool:
+    files = lambda d: sorted(p.relative_to(d) for p in d.rglob("*") if p.is_file())  # noqa: E731
+    fa = files(a)
+    return fa == files(b) and all(filecmp.cmp(a / f, b / f, shallow=False) for f in fa)
+
+
 class Writer:
-    """Filesystem access that honours --dry-run."""
+    """Filesystem access that honours --dry-run and asks before replacing anything that already exists.
 
-    def __init__(self, dry_run: bool):
+    `confirm` is None when there is no terminal to ask on; conflicts are then skipped unless `overwrite` is set.
+    """
+
+    def __init__(self, dry_run: bool, overwrite: bool = False, confirm: Callable[[str], bool] | None = None):
         self.dry_run = dry_run
+        self.overwrite = overwrite
+        self.confirm = confirm
 
-    def text(self, path: Path, content: str, what: str) -> None:
+    def allow(self, what: str, path: Path) -> bool:
+        """Whether `what` may replace what is already at `path`."""
+        if self.overwrite:
+            return True
+        if self.dry_run:
+            logger.warning(
+                "{}: {} already exists, would ask before overwriting (--overwrite skips the prompt)", what, path
+            )
+            return True
+        if self.confirm is None:
+            logger.warning("{}: {} already exists, skipped (no terminal to ask; use --overwrite)", what, path)
+            return False
+        if self.confirm(f"{what}: {path} already exists. Overwrite?"):
+            return True
+        logger.info("{}: kept existing {}", what, path)
+        return False
+
+    def text(self, path: Path, content: str, what: str, ask: bool = True) -> None:
+        if path.is_file():
+            if path.read_text() == content:
+                return logger.info("{} unchanged: {}", what, path)
+            if ask and not self.allow(what, path):
+                return
         logger.info("{} -> {}", what, path)
         if not self.dry_run:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
 
     def copy_dir(self, src: Path, dst: Path, what: str) -> None:
+        if dst.is_dir():
+            if _same_dir(src, dst):
+                return logger.info("{} unchanged: {}", what, dst)
+            if not self.allow(what, dst):
+                return
         logger.info("{} -> {}", what, dst)
         if not self.dry_run:
             shutil.rmtree(dst, ignore_errors=True)
             shutil.copytree(src, dst)
 
     def copy_file(self, src: Path, dst: Path, what: str) -> None:
+        if dst.is_file():
+            if filecmp.cmp(src, dst, shallow=False):
+                return logger.info("{} unchanged: {}", what, dst)
+            if not self.allow(what, dst):
+                return
         logger.info("{} -> {}", what, dst)
         if not self.dry_run:
             dst.parent.mkdir(parents=True, exist_ok=True)
@@ -66,8 +111,12 @@ def _merge_json(w: Writer, path: Path, key: str, servers: dict, schema: str | No
         raise SyncError(f"{path} is not plain JSON ({e.msg}, line {e.lineno}); remove comments and retry") from e
     if schema:
         data.setdefault("$schema", schema)
-    data.setdefault(key, {}).update(servers)
-    w.text(path, json.dumps(data, indent=2) + "\n", f"mcp [{', '.join(servers)}]")
+    section = data.setdefault(key, {})
+    clashes = [n for n, spec in servers.items() if n in section and section[n] != spec]
+    if clashes and not w.allow(f"mcp [{', '.join(clashes)}]", path):
+        servers = {n: spec for n, spec in servers.items() if n not in clashes}
+    section.update(servers)
+    w.text(path, json.dumps(data, indent=2) + "\n", f"mcp [{', '.join(servers)}]", ask=False)
 
 
 def _toml(servers: dict) -> str:
