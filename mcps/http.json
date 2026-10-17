@@ -1,0 +1,6 @@
+{
+  "atlassian": {
+    "description": "Jira and Confluence (hosted, OAuth)",
+    "url": "https://mcp.atlassian.com/v2/mcp"
+  }
+}
