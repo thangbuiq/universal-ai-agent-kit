@@ -1,64 +1,95 @@
 # universal-ai-agent-kit
 
-One `uv`-installable CLI (`uak`) that syncs a shared base kit of **skills, slash commands, MCP servers and engineering instructions** into every major coding CLI:
+Keep one set of **skills, slash commands, MCP servers and engineering rules**, and sync it into Claude Code, OpenCode, Codex and GitHub Copilot CLI with a single command (`uak`).
 
-| Target      | Skills                      | Commands             | MCP                          | Instructions                         |
+## Quick start
+
+```bash
+uv tool install -e .   # editable: kit edits apply on the next sync
+uak sync -n            # dry run: see what would change
+uak sync               # install into all supported CLIs
+```
+
+No install needed: `uvx --from . uak sync`. A regular (non-editable) install bundles the kit into the wheel.
+
+## Supported CLIs
+
+| CLI         | Skills | Commands | MCP servers | Instructions |
+| ----------- | :----: | :------: | :---------: | :----------: |
+| Claude Code |   ✅   |    ✅    |     ✅      |      ✅      |
+| OpenCode    |   ✅   |    ✅    |     ✅      |      ✅      |
+| Codex       |   ✅   |    ✅    |     ✅      |      ✅      |
+| Copilot CLI |   ✅   |    –     |     ✅      |      ✅      |
+
+<details>
+<summary>Where files are written (user scope)</summary>
+
+| CLI         | Skills                      | Commands             | MCP                          | Instructions                         |
 | ----------- | --------------------------- | -------------------- | ---------------------------- | ------------------------------------ |
 | Claude Code | `~/.claude/skills`          | `~/.claude/commands` | `~/.claude.json`             | `~/.claude/CLAUDE.md`                |
 | OpenCode    | `~/.config/opencode/skills` | `.../commands`       | `.../opencode.json`          | `.../AGENTS.md`                      |
 | Codex       | `~/.codex/skills`           | `~/.codex/prompts`   | `~/.codex/config.toml`       | `~/.codex/AGENTS.md`                 |
 | Copilot CLI | `~/.copilot/skills`         | – (not supported)    | `~/.copilot/mcp-config.json` | `~/.copilot/copilot-instructions.md` |
 
-`--scope project` writes into the current repo instead (`.claude/`, `.opencode/`, `.agents/skills`, `.github/`, `AGENTS.md`, `CLAUDE.md`, `.mcp.json`, ...). Env overrides: `CLAUDE_CONFIG_DIR`, `OPENCODE_CONFIG_DIR`, `CODEX_HOME`, `COPILOT_HOME`.
+Env overrides: `CLAUDE_CONFIG_DIR`, `OPENCODE_CONFIG_DIR`, `CODEX_HOME`, `COPILOT_HOME`.
 
-## Install & use
+`--scope project` writes into the current repo instead (`.claude/`, `.opencode/`, `.agents/skills`, `.github/`, `AGENTS.md`, `CLAUDE.md`, `.mcp.json`, ...).
 
-```bash
-uv tool install -e .          # editable: edits to the kit apply on next sync
-# or without installing:  uvx --from . uak sync
-# (a regular install bundles the kit into the wheel)
+</details>
 
-uak list                       # what's in the kit
-uak sync -n                    # dry run
-uak sync                       # sync to all CLIs (user scope)
-uak sync -t claude -t codex    # only some targets
-uak sync -s project            # install into the current repo
-uak sync --only skills --only mcp   # only some kinds
-uak --kit ~/my-kit sync        # use your own kit (same layout)
-uak -v sync                    # debug logging
-```
+## Usage
 
-Sync is idempotent. Skills/commands owned by the kit are overwritten; MCP servers are merged by name into existing JSON (other entries untouched); instructions and Codex TOML are written inside marked blocks (`uak:begin/end`) so your own content is preserved.
+| Goal                      | Command                             |
+| ------------------------- | ----------------------------------- |
+| See what the kit contains | `uak list`                          |
+| Preview without writing   | `uak sync -n`                       |
+| Sync everything           | `uak sync`                          |
+| Only some CLIs            | `uak sync -t claude -t codex`       |
+| Only some kinds           | `uak sync --only skills --only mcp` |
+| Install into this repo    | `uak sync -s project`               |
+| Replace without asking    | `uak sync --overwrite`              |
+| Use your own kit          | `uak --kit ~/my-kit sync`           |
+| Debug logging             | `uak -v sync`                       |
 
-## Skills & commands
+Kinds are `skills`, `commands`, `mcp`, `instructions`; targets are `claude`, `opencode`, `codex`, `copilot`.
 
-> Keep these tables in sync with `skills/` and `commands/` (see `AGENTS.md`). Third-party provenance and licenses: [NOTICE.md](NOTICE.md).
+Sync is idempotent and safe to re-run:
+
+- Anything identical to what is already installed is left alone.
+- If a skill, command, MCP server or instructions file already exists and differs, `uak` asks `Overwrite? [y/N]` before replacing it. Pass `--overwrite` to replace without asking. With no terminal (CI, pipes) conflicts are skipped unless `--overwrite` is set.
+- MCP servers are merged by name into existing JSON; your other entries are untouched, and only a server with the same name but a different spec triggers a prompt.
+- Instructions and Codex TOML are written inside marked blocks (`uak:begin/end`), so your own content outside the block is preserved.
+
+## What's in the kit
+
+Third-party provenance and licenses: [NOTICE.md](NOTICE.md).
 
 ### Skills
 
-| Skill                                                                              | Description                                                                                                                                 | Source                                                                                                                                      |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`brainstorming`](skills/brainstorming/SKILL.md)                                   | You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or planning… | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/brainstorming)                  |
-| [`documentation`](skills/documentation/SKILL.md)                                   | Write or update READMEs, API docs, docstrings, ADRs and changelogs.                                                                         | first-party                                                                                                                                 |
-| [`executing-plans`](skills/executing-plans/SKILL.md)                               | Use when executing an implementation plan in the current session as the implementer yourself — your human partner chose inline execution,…  | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/executing-plans)                |
-| [`finishing-a-development-branch`](skills/finishing-a-development-branch/SKILL.md) | Use when implementation is complete, all tests pass, and you need to decide how to integrate the work                                       | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/finishing-a-development-branch) |
-| [`frontend-design`](skills/frontend-design/SKILL.md)                               | Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one.                                      | [anthropics/skills](https://github.com/anthropics/skills/tree/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/frontend-design)              |
-| [`git-workflow`](skills/git-workflow/SKILL.md)                                     | Branching, Conventional Commit messages and pull request practices.                                                                         | first-party                                                                                                                                 |
-| [`mcp-builder`](skills/mcp-builder/SKILL.md)                                       | Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through…           | [anthropics/skills](https://github.com/anthropics/skills/tree/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/mcp-builder)                  |
-| [`receiving-code-review`](skills/receiving-code-review/SKILL.md)                   | Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable… | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/receiving-code-review)          |
-| [`refactoring`](skills/refactoring/SKILL.md)                                       | Safely restructure code without changing behaviour.                                                                                         | first-party                                                                                                                                 |
-| [`requesting-code-review`](skills/requesting-code-review/SKILL.md)                 | Use when completing tasks, implementing major features, or before merging to verify work meets requirements                                 | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/requesting-code-review)         |
-| [`subagent-driven-development`](skills/subagent-driven-development/SKILL.md)       | Use when executing implementation plans with independent tasks in the current session                                                       | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/subagent-driven-development)    |
-| [`systematic-debugging`](skills/systematic-debugging/SKILL.md)                     | Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes                                                 | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/systematic-debugging)           |
-| [`test-driven-development`](skills/test-driven-development/SKILL.md)               | Use when implementing any feature or bugfix, before writing implementation code                                                             | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/test-driven-development)        |
-| [`using-git-worktrees`](skills/using-git-worktrees/SKILL.md)                       | Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated…  | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/using-git-worktrees)            |
-| [`verification-before-completion`](skills/verification-before-completion/SKILL.md) | Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands…    | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/verification-before-completion) |
-| [`webapp-testing`](skills/webapp-testing/SKILL.md)                                 | Toolkit for interacting with and testing local web applications using Playwright.                                                           | [anthropics/skills](https://github.com/anthropics/skills/tree/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/webapp-testing)               |
-| [`writing-plans`](skills/writing-plans/SKILL.md)                                   | Use when you have a spec or requirements for a multi-step task, before touching code                                                        | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/writing-plans)                  |
+| Skill                                                                              | What it does                                                                                  | Source                                                                                                                                      |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`brainstorming`](skills/brainstorming/SKILL.md)                                   | Explore requirements and design before building anything new                                  | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/brainstorming)                  |
+| [`commit-with-precommit`](skills/commit-with-precommit/SKILL.md)                   | Run `prek`/`pre-commit run --all-files` before committing, if the repo root has a hook config | first-party                                                                                                                                 |
+| [`documentation`](skills/documentation/SKILL.md)                                   | Write or update READMEs, API docs, docstrings, ADRs, changelogs                               | first-party                                                                                                                                 |
+| [`executing-plans`](skills/executing-plans/SKILL.md)                               | Carry out a written plan inline, task by task                                                 | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/executing-plans)                |
+| [`finishing-a-development-branch`](skills/finishing-a-development-branch/SKILL.md) | Decide how to integrate finished work (merge, PR, cleanup)                                    | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/finishing-a-development-branch) |
+| [`frontend-design`](skills/frontend-design/SKILL.md)                               | Distinctive, intentional UI design instead of templated defaults                              | [anthropics/skills](https://github.com/anthropics/skills/tree/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/frontend-design)              |
+| [`git-workflow`](skills/git-workflow/SKILL.md)                                     | Branching, Conventional Commits and pull request practices                                    | first-party                                                                                                                                 |
+| [`mcp-builder`](skills/mcp-builder/SKILL.md)                                       | Build high-quality MCP servers in Python or TypeScript                                        | [anthropics/skills](https://github.com/anthropics/skills/tree/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/mcp-builder)                  |
+| [`receiving-code-review`](skills/receiving-code-review/SKILL.md)                   | Verify review feedback technically before applying it                                         | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/receiving-code-review)          |
+| [`refactoring`](skills/refactoring/SKILL.md)                                       | Restructure code safely without changing behaviour                                            | first-party                                                                                                                                 |
+| [`requesting-code-review`](skills/requesting-code-review/SKILL.md)                 | Review work against requirements before merging                                               | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/requesting-code-review)         |
+| [`subagent-driven-development`](skills/subagent-driven-development/SKILL.md)       | Run plans with independent tasks through subagents                                            | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/subagent-driven-development)    |
+| [`systematic-debugging`](skills/systematic-debugging/SKILL.md)                     | Find the root cause before proposing a fix                                                    | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/systematic-debugging)           |
+| [`test-driven-development`](skills/test-driven-development/SKILL.md)               | Write the failing test first, then the code                                                   | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/test-driven-development)        |
+| [`using-git-worktrees`](skills/using-git-worktrees/SKILL.md)                       | Isolate feature work in its own worktree                                                      | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/using-git-worktrees)            |
+| [`verification-before-completion`](skills/verification-before-completion/SKILL.md) | Run the checks and read the output before claiming done                                       | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/verification-before-completion) |
+| [`webapp-testing`](skills/webapp-testing/SKILL.md)                                 | Test local web apps with Playwright                                                           | [anthropics/skills](https://github.com/anthropics/skills/tree/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/webapp-testing)               |
+| [`writing-plans`](skills/writing-plans/SKILL.md)                                   | Turn a spec into a step-by-step implementation plan                                           | [obra/superpowers](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/writing-plans)                  |
 
 ### Commands
 
-| Command                                 | Description                                                          | Skills used               |
+| Command                                 | What it does                                                         | Skill used                |
 | --------------------------------------- | -------------------------------------------------------------------- | ------------------------- |
 | [`/brainstorm`](commands/brainstorm.md) | Explore requirements and design before implementing                  | `brainstorming`           |
 | [`/commit`](commands/commit.md)         | Create a Conventional Commit from current changes                    | `git-workflow`            |
@@ -70,23 +101,28 @@ Sync is idempotent. Skills/commands owned by the kit are overwritten; MCP server
 | [`/review`](commands/review.md)         | Review current changes (or a given PR/branch) for bugs and quality   | `requesting-code-review`  |
 | [`/tdd`](commands/tdd.md)               | Implement a feature or fix using test-driven development             | `test-driven-development` |
 
-## Kit layout (repo root)
+### MCP servers
 
-```
-skills/<name>/SKILL.md   # see NOTICE.md: 14 imported from obra/superpowers + anthropics/skills,
-                         # plus first-party git-workflow, refactoring, documentation
-commands/<name>.md       # /plan /brainstorm /review /commit /pr /tdd /debug /refactor /docs
-mcps/stdio.json          # local servers: context7, fetch, playwright
-mcps/http.json           # hosted (streamable HTTP) servers: atlassian
-mcps/sse.json            # hosted legacy SSE servers (none by default)
-AGENTS.md                # shared engineering principles
-```
+| Server       | Transport     | File              |
+| ------------ | ------------- | ----------------- |
+| `context7`   | local (stdio) | `mcps/stdio.json` |
+| `fetch`      | local (stdio) | `mcps/stdio.json` |
+| `playwright` | local (stdio) | `mcps/stdio.json` |
+| `atlassian`  | hosted (HTTP) | `mcps/http.json`  |
 
-Add a skill by creating `skills/<name>/SKILL.md` (frontmatter `name`, `description`), a command by dropping a `.md` file in `commands/`, an MCP server in `mcps/` (see below), then run `uak sync`.
+## Customize the kit
 
-## Adding MCP servers
+Add something, then run `uak sync`:
 
-MCP servers are split by transport, one file each in `mcps/`. Each file maps a server name to its spec; names must be unique across files.
+| To add a... | Do this                                                                   |
+| ----------- | ------------------------------------------------------------------------- |
+| Skill       | Create `skills/<name>/SKILL.md` with `name` and `description` frontmatter |
+| Command     | Drop a `.md` file in `commands/`                                          |
+| MCP server  | Add an entry to a file in `mcps/` (below)                                 |
+
+### MCP servers
+
+One file per transport in `mcps/`. Each maps a server name to its spec; names must be unique across files.
 
 | File         | Transport               | Required  | Optional                     |
 | ------------ | ----------------------- | --------- | ---------------------------- |
@@ -94,42 +130,58 @@ MCP servers are split by transport, one file each in `mcps/`. Each file maps a s
 | `http.json`  | hosted, streamable HTTP | `url`     | `headers`, `description`     |
 | `sse.json`   | hosted, legacy SSE      | `url`     | `headers`, `description`     |
 
-Hosted example (`mcps/http.json`), e.g. Atlassian:
-
-```json
-{
-  "atlassian": { "description": "Jira and Confluence", "url": "https://mcp.atlassian.com/v2/mcp" }
-}
-```
-
-Local example (`mcps/stdio.json`):
-
 ```json
 { "context7": { "command": "npx", "args": ["-y", "@upstash/context7-mcp@latest"] } }
 ```
 
-Then `uak sync --only mcp` (add `-n` to preview).
+```json
+{ "atlassian": { "description": "Jira and Confluence", "url": "https://mcp.atlassian.com/v2/mcp" } }
+```
 
-Per-CLI mapping: Claude/Copilot write `type: http|sse`; OpenCode writes `type: remote` for both; Codex supports `stdio` and `http` only (SSE servers are skipped with a warning).
+Preview with `uak sync --only mcp -n`.
 
-**Authentication.** Most hosted servers (including Atlassian) use OAuth: after syncing, authenticate once inside each CLI (Claude: `/mcp`; Codex: `codex mcp login atlassian`; OpenCode: `opencode mcp auth atlassian`; Copilot: `/mcp`). Avoid putting tokens in `headers`: values are written literally into each CLI's config file, so if you must use one, keep it in a private, uncommitted custom kit (`--kit`).
+- **Per-CLI mapping:** Claude and Copilot write `type: http|sse`; OpenCode writes `type: remote` for both; Codex supports `stdio` and `http` only (SSE servers are skipped with a warning).
+- **Authentication:** most hosted servers (including Atlassian) use OAuth. After syncing, authenticate once inside each CLI (Claude: `/mcp`; Codex: `codex mcp login atlassian`; OpenCode: `opencode mcp auth atlassian`; Copilot: `/mcp`). Avoid tokens in `headers`: values are written literally into each CLI's config file. If you must, keep them in a private, uncommitted custom kit (`--kit`).
 
 ## Project layout
 
 ```
-skills/ commands/ mcps/ AGENTS.md   (content you edit)
-uak/    cli.py (typer UI) · targets.py (per-CLI adapters) · kit.py
+.
+├── .github
+│   └── workflows
+├── commands
+│   ├── <name>.md
+│   └── ...
+├── mcps
+│   ├── http.json
+│   ├── sse.json
+│   └── stdio.json
+├── skills
+│   ├── <name>
+│   │   └── SKILL.md
+│   └── ...
+├── uak
+│   ├── __init__.py
+│   ├── cli.py
+│   ├── kit.py
+│   └── targets.py
+├── AGENTS.md
+├── NOTICE.md
+├── README.md
+├── prek.toml
+└── pyproject.toml
 ```
 
 ## Notes
 
-- MCP servers need `npx` (Node) and `uvx` available. Codex: don't define the same server name outside the managed block in `config.toml` (duplicate TOML tables).
+- MCP servers need `npx` (Node) and `uvx` available.
+- Codex: don't define the same server name outside the managed block in `config.toml` (duplicate TOML tables).
 - OpenCode's `opencode.json` must be plain JSON (no comments) for merging.
 - Project-scope MCP for Copilot CLI is skipped (user-level only).
 
 ## Development
 
-Formatting and linting run through [prek](https://github.com/j178/prek) (config: `prek.toml`): ruff (lint + format), end-of-file, trailing whitespace, JSON and Markdown formatting.
+Formatting and linting run through [prek](https://github.com/j178/prek) (config: `prek.toml`): ruff (lint + format), end-of-file, trailing whitespace, JSON and Markdown formatting. CI runs the same check on every PR to `main` and on pushes to `main`.
 
 ```bash
 uv sync                      # installs prek + ruff (dev group)
