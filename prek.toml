@@ -1,0 +1,31 @@
+# Run with: prek run --all-files   (install git hook: prek install)
+# Vendored third-party skills (see NOTICE.md) stay byte-identical to upstream.
+exclude = "^(skills/(brainstorming|writing-plans|executing-plans|subagent-driven-development|test-driven-development|systematic-debugging|requesting-code-review|receiving-code-review|verification-before-completion|finishing-a-development-branch|using-git-worktrees|mcp-builder|webapp-testing|frontend-design)/|LICENSE-superpowers\\.txt$)"
+
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v5.0.0"
+hooks = [
+  { id = "end-of-file-fixer" },
+  { id = "trailing-whitespace", args = ["--markdown-linebreak-ext=md"] },
+  { id = "mixed-line-ending" },
+  { id = "check-json" },
+  { id = "pretty-format-json", args = ["--autofix", "--indent", "2", "--no-sort-keys"] },
+  { id = "check-toml" },
+  { id = "check-merge-conflict" },
+]
+
+[[repos]]
+repo = "https://github.com/astral-sh/ruff-pre-commit"
+rev = "v0.9.10"
+hooks = [
+  { id = "ruff", args = ["--fix"] },
+  { id = "ruff-format" },
+]
+
+[[repos]]
+repo = "https://github.com/executablebooks/mdformat"
+rev = "0.7.22"
+hooks = [
+  { id = "mdformat", args = ["--wrap", "keep"], additional_dependencies = ["mdformat-gfm", "mdformat-frontmatter"] },
+]

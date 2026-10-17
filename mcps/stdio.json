@@ -1,0 +1,25 @@
+{
+  "context7": {
+    "description": "Up-to-date library documentation",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@upstash/context7-mcp@latest"
+    ]
+  },
+  "fetch": {
+    "description": "Fetch web pages as markdown",
+    "command": "uvx",
+    "args": [
+      "mcp-server-fetch"
+    ]
+  },
+  "playwright": {
+    "description": "Browser automation and UI verification",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@playwright/mcp@latest"
+    ]
+  }
+}
