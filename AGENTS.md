@@ -22,7 +22,7 @@ This section is for contributors to this repo and is **not** synced to users' CL
 
 - Every `skills/<name>/SKILL.md` must carry a `metadata.source` frontmatter entry: the upstream URL (pinned to a commit) for imported skills, or `first-party`. Record third-party skills and their licenses in `NOTICE.md`.
 
-- Imported skills stay unchanged from upstream apart from the `metadata.source` entry, and are excluded from the formatters in `prek.toml`. Add new vendored skills to that `exclude` list.
+- Imported skills stay unchanged from upstream apart from the `metadata.source` entry and em dashes (U+2014) replaced with a hyphen (-), and are excluded from the formatters in `prek.toml`. Add new vendored skills to that `exclude` list.
 
 - Run `uv run prek run --all-files` before committing.
 
